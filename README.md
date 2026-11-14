@@ -2,7 +2,7 @@
 
 **Hackpalachia 2026 · Rural Health Hackathon · Care Delivery track**
 
-A free mobile health van in rural Southeast Ohio (Meigs County). Patients book, change or cancel visits by plain text, with no phone call, no app and no data plan. Clinic staff see everything on one screen, and anything medical or unclear goes to a human.
+A free mobile health van in rural Athens County, Ohio (demo stops: Coolville and Glouster). Patients book, change or cancel visits by plain text, with no phone call, no app and no data plan. Clinic staff see everything on one screen, and anything medical or unclear goes to a human.
 
 **Live demo:** https://skylerfokine.github.io/book-without-calling/
 

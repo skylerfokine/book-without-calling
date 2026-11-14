@@ -243,7 +243,7 @@
 <template id="staffTpl">
   <div class="staff" id="staff">
     <div class="sbar">
-      <h2>Staff console · Pomeroy</h2>
+      <h2>Staff console · Coolville stop</h2>
       <label class="datepick">📅 Viewing <input type="date" id="viewDate" aria-label="Choose which day to view"></label>
       <button class="sbtn" id="nextBtn">Next patient message ▸</button>
       <button class="sbtn ghost" id="liveBtn">▶ Live feed</button>
@@ -280,7 +280,7 @@
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const TIMES=["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","1:00 PM","1:30 PM","2:00 PM","2:30 PM"];
-const TRANSIT="Meigs County Public Transit takes people to medical visits: (740) 444-5555. Call a few days ahead.";
+const TRANSIT="Athens County public transit takes people to medical visits: (740) 444-5555. Call a few days ahead.";
 const TODAY="2026-11-14", MAIN="2026-12-15";
 const PATIENTS=["Linda M.","Ray T.","Carol S.","Donna K.","Rita S.","Mae W."];
 const POOL=["Hal R.","Ivy N.","June P.","Lou M.","Pearl D.","Otis F.","Vera K.","Wade H.","Nell B.","Cy A.","Faye L.","Gus T.","Mabel O.","Roy E.","Dot S.","Jess W."];
@@ -378,8 +378,8 @@ const first=n=>String(n).split(" ")[0];
 function pstate(n){ return S.pt[n]||(S.pt[n]={stage:null,optedOut:false}); }
 function greetFor(n){
   const b=findBooking(n);
-  const greet=b?`Hi ${first(n)}, it's Sherry from the health van. Reminder: your visit is ${b.row.time} on ${fmt(b.iso)} at the Dollar General, Pomeroy.\nReply CHANGE to move it, 2 to cancel, HELP for more.`
-              :`Hi ${first(n)}, it's Sherry from the health van. We'll be at the Dollar General in Pomeroy on ${fmt(MAIN)}, 9 AM-3 PM.\nReply 1 to save a spot, or text any date that works for you.\nReply HELP for more options.`;
+  const greet=b?`Hi ${first(n)}, it's Sherry from the health van. Reminder: your visit is ${b.row.time} on ${fmt(b.iso)} at the Coolville stop.\nReply CHANGE to move it, 2 to cancel, HELP for more.`
+              :`Hi ${first(n)}, it's Sherry from the health van. We'll be at the Coolville stop on ${fmt(MAIN)}, 9 AM-3 PM.\nReply 1 to save a spot, or text any date that works for you.\nReply HELP for more options.`;
   return [{k:"psys",t:"Today 9:41 AM"},{k:"in",t:greet}];
 }
 function ensurePhone(n){ if(S.phones[n]) return false; S.phones[n]=greetFor(n); return true; }
@@ -401,9 +401,9 @@ function handleCore(raw){
     if(N===L.who) L.view=dIso;
     if(dIso<TODAY){ toPhone(`Sorry, ${fmt(dIso)} has already passed. Text another date.`); return; }
     if(b){ const m=moveBooking(N,dIso); if(!m){ toPhone(`Sorry, ${fmt(dIso)} is full. Text another date, or reply CHANGE for options.`); return; }
-      tag(label||"MOVE → "+fmt(dIso).toUpperCase()); S.auto++; toPhone(`Done! You're now booked for ${m.time} on ${fmt(dIso)} at the Dollar General, Pomeroy. Reply CHANGE anytime to move it.`); toast(`${N} moved to ${fmt(dIso)} ${m.time}`); }
+      tag(label||"MOVE → "+fmt(dIso).toUpperCase()); S.auto++; toPhone(`Done! You're now booked for ${m.time} on ${fmt(dIso)} at the Coolville stop. Reply CHANGE anytime to move it.`); toast(`${N} moved to ${fmt(dIso)} ${m.time}`); }
     else { const s=bookOn(N,dIso); if(!s){ toPhone(`Sorry, ${fmt(dIso)} is full. Text another date.`); return; } S.avoided++; S.auto++;
-      tag(label||"BOOK → "+fmt(dIso).toUpperCase()); P.stage="need"; toPhone(`You're booked for ${s} on ${fmt(dIso)} at the Dollar General, Pomeroy.`);
+      tag(label||"BOOK → "+fmt(dIso).toUpperCase()); P.stage="need"; toPhone(`You're booked for ${s} on ${fmt(dIso)} at the Coolville stop.`);
       toPhone("What's the visit for? This helps the nurse get ready.\n1 Checkup\n2 Medication refill\n3 New problem\nOr tell us in your own words."); toast(`${N} booked ${fmt(dIso)} ${s}`); }
   };
 
@@ -448,7 +448,7 @@ function handleCore(raw){
   if(/truck|car\b|ride|no way to get|cant get there|can't get there|transport|gas/.test(l)){
     tag("CAN'T GET THERE"); S.transport++; P.stage="change";
     toPhone("Sorry about that. We can't provide rides ourselves, but this may help:\n"+TRANSIT+"\nOr text a date that's easier for you, like “Jan 15”.");
-    addTask({kind:"transport",title:`${N} can't get to Pomeroy`,detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return;
+    addTask({kind:"transport",title:`${N} can't get to Coolville`,detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return;
   }
   if(/^(2|no|nope|cancel|cant come|can't come|cant make it|can't make it)\b/.test(l)){
     tag("CANCEL");
@@ -466,8 +466,8 @@ function handleCore(raw){
     tag("CALL-BACK"); toPhone("Got it. A nurse will call you today before 4 PM.");
     addTask({kind:"call",title:`${N} asked for a call back`,detail:"Prefers to talk to a person.",acts:[{label:"Called ✓",doneText:`Nurse called ${F}`,phone:"☎ Call from the clinic nurse · 4 min"}]}); return;
   }
-  if(/^where\b|where('s| is) the van/.test(l)){ tag("WHERE IS THE VAN"); S.auto++; toPhone("🚐 The van left Athens at 8:05 AM and is about 15 minutes from the Dollar General in Pomeroy."); return; }
-  if(/\b457\d\d\b/.test(l)){ tag("ZIP → NEAREST STOPS"); S.auto++; toPhone("Closest stops to "+l.match(/457\d\d/)[0]+":\n1 Pomeroy, about 4 mi\n2 Racine, about 11 mi\nReply 1 to book Pomeroy, or text a date."); return; }
+  if(/^where\b|where('s| is) the van/.test(l)){ tag("WHERE IS THE VAN"); S.auto++; toPhone("🚐 The van left Athens at 8:05 AM and is about 15 minutes from the Coolville stop."); return; }
+  if(/\b457\d\d\b/.test(l)){ tag("ZIP → NEAREST STOPS"); S.auto++; toPhone("Closest stops to "+l.match(/457\d\d/)[0]+":\n1 Coolville stop\n2 Glouster stop\nReply 1 to book Coolville, or text a date."); return; }
   if(/bring|what do i need|insurance|cost|how much|free\b/.test(l)){ tag("WHAT TO BRING / COST"); S.auto++; toPhone("The visit is free and insurance isn't needed. Please bring your pill bottles, papers from other doctors, and a photo ID if you have one."); return; }
   if(/sick|pain|hurt|cough|fever|sugar|blood pressure|medicine|meds|dizzy|rash/.test(l)){
     tag("HEALTH QUESTION → NURSE"); toPhone("Thanks for telling us. A nurse will read this and call you today. We can't give medical advice by text. If it's an emergency, call 911.");
@@ -487,7 +487,7 @@ function sendFromPhone(t){
 /* ---------- other patients (scripted, on the main day) ---------- */
 const SCRIPT=[
   {who:"Mae W.",text:"yeah ill be there",ai:"BOOK",run:()=>{ if(findBooking("Mae W.")) return "Already booked."; const t=bookOn("Mae W.",MAIN,"Checkup"); if(t){S.avoided++;} S.auto++; return t?`Booked ${fmt(MAIN)} ${t}.`:"Day full, added to waitlist."; }},
-  {who:"Hank D.",text:"cant make it, truck broke",ai:"CAN'T GET THERE",run:()=>{ S.transport++; addTask({kind:"transport",title:"Hank D. can't get to Pomeroy",detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return "Transport barrier logged; transit info sent."; }},
+  {who:"Hank D.",text:"cant make it, truck broke",ai:"CAN'T GET THERE",run:()=>{ S.transport++; addTask({kind:"transport",title:"Hank D. can't get to Coolville",detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return "Transport barrier logged; transit info sent."; }},
   {who:"Gene P.",text:"my chest has been tight since last night",ai:"MEDICAL · URGENT",run:()=>{ addTask({kind:"urgent",title:"URGENT: Gene P. chest tightness",detail:"Told to call 911. Call them now.",acts:[{label:"Called ✓",doneText:"Nurse reached Gene"}]}); toast("URGENT message from Gene P."); return "911 guidance sent; flagged URGENT."; }},
   {who:"Bev S.",text:"can i come jan 12 instead",ai:"MOVE → "+fmt("2027-01-12").toUpperCase(),run:()=>{ const m=moveBooking("Bev S.","2027-01-12"); S.auto++; return m?`Moved to ${fmt("2027-01-12")} ${m.time}. Her old slot went to the waitlist.`:"Not booked."; }},
   {who:"Opal J. (waitlist)",text:"CALL ME",ai:"CALL-BACK",run:()=>{ addTask({kind:"call",title:"Opal J. asked for a call back",detail:"On the waitlist.",acts:[{label:"Called ✓",doneText:"Nurse called Opal"}]}); return "Sent to staff as a call-back."; }},
@@ -605,7 +605,7 @@ function wireStaff(){
   $("nextBtn").onclick=()=>{ stopLive(); dispatch({t:"next"}); };
   $("liveBtn").onclick=()=>L.live?stopLive():startLive();
   $("lateBtn").onclick=()=>dispatch({t:"late",day:L.view});
-  $("copyBtn").onclick=()=>{ const txt=`Pomeroy · Dollar General · ${fmt(L.view)}\n`+rowsOf(L.view).map(r=>`${r.time}\t${r.name}\t${r.need}\t${r.status}`).join("\n");
+  $("copyBtn").onclick=()=>{ const txt=`Coolville stop · ${fmt(L.view)}\n`+rowsOf(L.view).map(r=>`${r.time}\t${r.name}\t${r.need}\t${r.status}`).join("\n");
     try{ navigator.clipboard.writeText(txt).then(()=>toast("Daily list copied. Paste it into Athena."),()=>toast("Copy blocked here: in the real system this exports a file.")); }catch(e){ toast("Copy blocked here: in the real system this exports a file."); } };
 }
 
@@ -640,7 +640,7 @@ function wirePhone(){
    Demo data only: the relay is public, so never send real patient information. */
 /* Make sure every device runs the same version: phones often hold an old cached copy,
    and an old copy can't sync with a new one. If a newer version is published, reload. */
-const BUILD="2026-11-14-c";
+const BUILD="2026-11-14-d";
 (async()=>{ try{
   const html=await fetch(location.pathname+"?build="+Date.now(),{cache:"no-store"}).then(r=>r.text());
   const m=html.match(/const BUILD="([^"]+)"/);
