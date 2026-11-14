@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Book Without Calling — Live Demo</title>
+<title>Rural Reachout — Live Demo</title>
 <style>
   :root{
     --bg:#f2f4f0; --card:#fff; --ink:#1d2a2c; --muted:#62706d; --line:#e0e4dd;
@@ -160,7 +160,7 @@
 </head>
 <body class="v-home">
 <nav>
-  <span class="brand" data-go="home">🚐 Book Without Calling</span>
+  <span class="brand" data-go="home">🚐 Rural Reachout</span>
   <a href="#home" data-go="home">Home</a>
   <a href="#patient" data-go="patient">Patient</a>
   <a href="#staff" data-go="staff">Clinic staff</a>
@@ -173,7 +173,7 @@
 
 <!-- HOME -->
 <section id="home" class="view">
-  <h1>Book Without Calling</h1>
+  <h1>Rural Reachout</h1>
   <p class="lead">Free mobile health van, rural Southeast Ohio. Patients book, change or cancel visits by plain text, with no phone call, no app and no data. Staff see everything on one screen. Choose who you want to be:</p>
   <div class="choices">
     <button class="choice" data-go="patient"><div class="ic">📱</div><h2>I'm a patient</h2><p>Text the health van like a real patient: book, change, cancel, ask questions. Works on any flip phone.</p></button>
@@ -640,7 +640,7 @@ function wirePhone(){
    Demo data only: the relay is public, so never send real patient information. */
 /* Make sure every device runs the same version: phones often hold an old cached copy,
    and an old copy can't sync with a new one. If a newer version is published, reload. */
-const BUILD="2026-11-14-d";
+const BUILD="2026-11-14-e";
 (async()=>{ try{
   const html=await fetch(location.pathname+"?build="+Date.now(),{cache:"no-store"}).then(r=>r.text());
   const m=html.match(/const BUILD="([^"]+)"/);
