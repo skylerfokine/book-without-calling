@@ -24,7 +24,7 @@
 3. Press **Reset demo**. Check that the badge says **● Live sync** (green) on both.
 4. Hard-refresh both (Ctrl+Shift+R) if anything looks old.
 5. Keep a second laptop tab on **Both side by side** as the backup. It works in one browser with no internet.
-6. Make sure the phone's "texting as" is set to **Linda M.**
+6. Make sure the phone's "texting as" is set to **Linda M.** and the staff **Viewing** date is **Tue, Dec 15**.
 
 ## Slide 1 · Title (20 s)
 
@@ -62,7 +62,7 @@ One thing we're still assuming: how many misses are people we never reached, ver
 
 Here's what changes. Ray books his follow-up before he leaves the van. Reminders come the way he picks: text, postcard, or an automated call that works on a landline.
 
-He answers with one word, like "1", "CHANGE", or plain language like "truck broke down", and the system understands it. If he has no signal, the text just waits and sends when he gets to town. If he never replies, a paid local health messenger finds him at church or the Dollar General.
+He answers with one word like "1", a date like "can I come Jan 15th", or plain language like "truck broke down", and the system understands it. If he has no signal, the text just waits and sends when he gets to town. If he never replies, a paid local health messenger finds him at church or the Dollar General.
 
 Day to day, one nurse runs one screen. And the AI never gives medical advice: anything medical or unclear goes to a human, and urgent words get "call 911" plus a red alert.
 
@@ -70,20 +70,20 @@ Let us show you.
 
 ## Slide 5 · Live demo (2 min 30 s)
 
-Switch the projector to the **staff console**. The driver holds the phone up or mirrors it.
+Switch the projector to the **staff console** (Viewing: Tue, Dec 15). The driver holds the phone up or mirrors it.
 
 | # | Time | Driver does | Narrator says |
 |---|---|---|---|
-| 1 | 0:00 to 0:20 | **Phone (Linda):** type `1`, Send | "Linda just got her reminder and texted '1'. Watch the clinic screen: she's on the daily list. Nobody made a call." |
-| 2 | 0:20 to 0:35 | **Phone:** `refill my blood pressure pills`, Send | "She tells us in her own words. The nurse sees 'Medication refill' before the visit, so she can prep it." |
-| 3 | 0:35 to 0:55 | **Laptop:** Linda's row, then **Move…**, then **Racine · Thu, Dec 10** | "Staff can move her to a closer stop. Her phone gets the new date instantly, and her old slot goes back into the pool." |
-| 4 | 0:55 to 1:20 | **Phone:** switch "texting as" to **Ray**, press **Lose signal**, type `CALL ME`, Send. Pause. Press **Signal is back** | "Ray's up the hollow with no signal. His text just waits on his phone, and the clinic hasn't seen anything yet." *(signal back)* "He drives into town, it sends, and a callback task appears for the nurse." |
-| 5 | 1:20 to 1:40 | **Phone:** `truck broke down, cant get there`, Send | "Plain English. We can't give rides, so it texts him the county transit number and a closer stop, and logs a transport barrier. Those counts become evidence for funders." |
-| 6 | 1:40 to 2:05 | **Phone:** `my chest hurts`, Send. **Laptop:** click **Called ✓** | "The AI never gives medical advice. He's told to call 911, and the nurse gets a red URGENT task." *(click)* "And Ray's phone shows the nurse called." |
-| 7 | 2:05 to 2:20 | **Laptop:** **Next patient message** twice | "Other patients book and report problems the same way. See 'booking calls avoided' going up." |
-| 8 | 2:20 to 2:30 | **Laptop:** **Snow: move stop** | "Snow? One click reschedules the whole stop and texts everyone. That used to be 20 phone calls." |
+| 1 | 0:00 to 0:15 | **Phone (Linda):** `1`, Send | "Linda got her reminder and texted '1'. Watch the clinic screen: she's on Tuesday's list. Nobody made a call." |
+| 2 | 0:15 to 0:25 | **Phone:** `refill my blood pressure pills` | "In her own words. The nurse sees 'Medication refill' before the visit." |
+| 3 | 0:25 to 0:50 | **Phone:** `can i come jan 15th instead`. **Laptop:** click the **Fri, Jan 15** chip under "Days with visits" | "Tuesday doesn't work, so she just texts a date." *(click)* "There she is on January 15th, and her Tuesday slot opened up for the waitlist." |
+| 4 | 0:50 to 1:15 | **Laptop:** Linda's row, then **Move…**, then **📅 Pick a date…**, pick a date and time, then **Move & text patient** | "Staff can move anyone to any day. Her phone gets the new date instantly." |
+| 5 | 1:15 to 1:40 | **Phone:** switch "texting as" to **Ray**, press **Lose signal**, type `CALL ME`, Send. Pause. Press **Signal is back** | "Ray's up the hollow with no signal. His text waits on his phone; the clinic sees nothing yet." *(signal back)* "He drives into town, it sends, and a callback task appears for the nurse." |
+| 6 | 1:40 to 1:55 | **Phone:** `truck broke down, cant get there` | "We can't give rides, so it texts him the county transit number, asks for a better date, and logs a transport barrier. Those counts become evidence for funders." |
+| 7 | 1:55 to 2:20 | **Phone:** `my chest hurts`. **Laptop:** click **Called ✓** | "The AI never gives medical advice. He's told to call 911, and the nurse gets a red URGENT task." *(click)* "And Ray's phone shows the nurse called." |
+| 8 | 2:20 to 2:30 | **Laptop:** click the **Tue, Dec 15** chip, then **❄ Snow: +1 week** | "Snow? One click moves the whole day a week and texts everyone. That used to be 20 phone calls." |
 
-**If live sync fails:** switch to the **Both side by side** tab and do the same steps. If everything fails, talk through the screenshot on slide 5.
+**Tips:** If you're short on time, skip step 4. **If live sync fails:** switch to the **Both side by side** tab and do the same steps. If everything fails, talk through the screenshot on slide 5.
 
 ## Slide 6 · Assumptions and risks (35 s)
 
@@ -126,4 +126,4 @@ Thank you. We're happy to take questions.
 | **What if the AI is wrong?** | It only handles scheduling. Every change sends an undo-able confirmation, anything unclear goes to a person, and urgent words trigger 911 guidance plus a nurse alert. |
 | **Privacy?** | Texts never include health details. A real deployment uses a HIPAA-covered texting vendor with a business associate agreement. The demo relay is public, so the demo uses fictional data only. |
 | **Who gets left out?** | No phone: postcards, automated landline calls, the messenger, walk-ins, plus signs at the stop. |
-| **What did you build vs. mock up?** | Built: text understanding, booking/moving/cancelling, waitlist, urgent routing, staff console, cross-device sync. Simulated: real SMS delivery, calls, postcards. |
+| **What did you build vs. mock up?** | Built: text understanding (including dates like "Jan 15th"), booking, moving and cancelling on any date, a calendar staff console, waitlist, urgent routing, and cross-device sync. Simulated: real SMS delivery, automated calls and postcards. |
