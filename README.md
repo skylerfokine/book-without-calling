@@ -11,7 +11,7 @@ A free mobile health van in rural Southeast Ohio (Meigs County). Patients book, 
 | Link | Who it's for |
 |---|---|
 | `#patient` | A patient's phone. Use **texting as** to switch between Linda, Ray, Carol, Donna, Rita and Mae. Works on a real phone. |
-| `#staff` | The clinic staff console: daily list, "needs a human" queue, live message feed |
+| `#staff` | The clinic staff console: a calendar of every van day, the "needs a human" queue and a live message feed. Move a patient or a whole day to any date. |
 | `#both` | Phone and console side by side on one screen |
 
 ## Live sync across devices
@@ -33,4 +33,6 @@ Open the patient view on a phone and the staff view on a laptop. Every patient t
 
 ## Files
 
-- `index.html`: the whole demo in one file (no build step)
+- `index.html`: the live demo in one file (no build step), with cross-device sync
+- `Book Without Calling — Live Demo (Patient + Staff).html`: Jay's working copy (artifact-only sync). After editing it, port changes into `index.html`
+- `pitch/`: the pitch deck and the 7-minute pitch + demo script

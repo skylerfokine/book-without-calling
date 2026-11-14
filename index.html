@@ -119,7 +119,13 @@
   .fm .who{font-weight:600;font-size:12px}
   .fm .tagai{display:block;margin-top:3px;font-size:11px;color:var(--blue);font-weight:600}
   .moveSel{font-size:12px;padding:2px;border-radius:6px;border:1px solid var(--line);width:92px}
-  #stopDateSel{width:auto}
+  .datepick{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;background:var(--green-soft);padding:4px 8px;border-radius:8px}
+  input[type=date]{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+  .sp2{flex:1}
+  .chip{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;margin:0 4px 4px 0;cursor:pointer}
+  .chip.on{background:var(--green);border-color:var(--green);color:#fff}
+  tr.edit td{background:#fffbe9}
+  .editrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px}
   /* both */
   #bothWrap{grid-template-columns:400px 1fr;gap:0;align-items:start}
   @media (max-width:1100px){#bothWrap{grid-template-columns:1fr}}
@@ -136,7 +142,6 @@
   .lbl{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 8px 4px;font-weight:600}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;z-index:9}
   .toast.show{opacity:1}
-  footer{text-align:center;font-size:12px;color:var(--muted);padding:10px 20px 24px}
   .links{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px}
   .links h3{margin:0 0 8px;font-size:15px}
   .links p{margin:4px 0;color:var(--muted)}
@@ -150,6 +155,7 @@
     body.v-patient .pstatus{display:none}
     body.v-patient footer{display:none}
   }
+  footer{text-align:center;font-size:12px;color:var(--muted);padding:10px 20px 24px}
 </style>
 </head>
 <body class="v-home">
@@ -179,7 +185,8 @@
     <ol>
       <li>On the phone, text <b>1</b>: Linda appears on the staff list.</li>
       <li>Text <b>refill my pills</b>: her visit reason shows up for the nurse.</li>
-      <li>On the staff side, use <b>Move…</b> on Linda's row to change her time <i>or her date</i>: her phone gets the update.</li>
+      <li>On the staff side, use <b>Move…</b> on Linda's row and pick <b>any date</b> on the calendar: her phone gets the update.</li>
+      <li>On the phone, text <b>can I come Jan 15th</b>: on the staff side, pick Jan 15 in <b>Viewing</b> to find her there.</li>
       <li>Switch <b>texting as</b> above the phone to try another patient, like Ray or Mae.</li>
       <li>Text <b>my chest hurts</b>: an URGENT task appears for staff instantly.</li>
       <li>Press <b>Next patient message</b> to see other patients texting in.</li>
@@ -236,13 +243,19 @@
 <template id="staffTpl">
   <div class="staff" id="staff">
     <div class="sbar">
-      <h2>Staff console · Pomeroy · <span id="stopDate">Tue, Dec 15</span></h2>
+      <h2>Staff console · Pomeroy</h2>
+      <label class="datepick">📅 Viewing <input type="date" id="viewDate" aria-label="Choose which day to view"></label>
       <button class="sbtn" id="nextBtn">Next patient message ▸</button>
       <button class="sbtn ghost" id="liveBtn">▶ Live feed</button>
       <button class="sbtn ghost" id="lateBtn">📢 Van running late</button>
-      <button class="sbtn ghost" id="snowBtn">❄ Snow: move stop</button>
-      <label class="small">Stop date <select id="stopDateSel" class="moveSel" style="font-size:13px;padding:4px"></select></label>
       <button class="sbtn ghost" id="copyBtn">Copy list for Athena</button>
+    </div>
+    <div class="sbar" style="margin-top:-4px">
+      <span class="small">Days with visits:</span><span id="dayChips"></span>
+      <span class="sp2"></span>
+      <label class="small">Move this whole day to <input type="date" id="moveDayTo" aria-label="Move the whole day to another date"></label>
+      <button class="sbtn ghost" id="moveDayBtn">Move day</button>
+      <button class="sbtn ghost" id="snowBtn">❄ Snow: +1 week</button>
     </div>
     <div class="stats">
       <div class="stat"><b id="sBooked">0</b><span>booked</span></div>
@@ -256,8 +269,7 @@
       <div class="panel"><h3>Needs a human <span class="count" id="taskCount">0</span></h3><div id="tasks"></div></div>
       <div class="panel"><h3>Daily list</h3>
         <table><thead><tr><th>Time</th><th>Patient</th><th>Visit for</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table>
-        <div class="small" id="movedList" style="margin-top:8px"></div>
-        <div class="small" style="margin-top:4px">Waitlist: <span id="waitlist"></span> · Open slots fill from the waitlist automatically. Copy the list into Athena once a day.</div>
+        <div class="small" style="margin-top:8px">Waitlist: <span id="waitlist"></span> · Open slots fill from the waitlist automatically. Copy the list into Athena once a day.</div>
       </div>
       <div class="panel"><h3>Live messages</h3><div class="feed" id="feed"></div></div>
     </div>
@@ -269,36 +281,42 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const TIMES=["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","1:00 PM","1:30 PM","2:00 PM","2:30 PM"];
 const TRANSIT="Meigs County Public Transit takes people to medical visits: (740) 444-5555. Call a few days ahead.";
-const OPTS=[["Tue, Dec 15","afternoon","Pomeroy, later the same day"],["Thu, Dec 10","11:00 AM","Racine stop"],["Tue, Jan 19","10:00 AM","Pomeroy, January"]];
-const LINDA="Linda M.";
-const PATIENTS=[["Linda M.","not booked yet"],["Ray T.","booked 10:00"],["Carol S.","booked 9:30"],["Donna K.","booked 9:00"],["Rita S.","booked 11:00"],["Mae W.","new to the van"]];
-const DAYS=[["Racine · Thu, Dec 10","11:00 AM"],["Pomeroy · Tue, Jan 19","10:00 AM"],["Pomeroy · Tue, Feb 16","10:00 AM"]];
-const STOP_DATES=["Tue, Dec 15","Thu, Dec 17","Tue, Dec 22","Tue, Jan 5"];
-let CUR=null;
-const first=n=>String(n).split(" ")[0];
-function nm(x){ if(!CUR||typeof x!=="string") return x; return x.replace(/Linda M\./g,CUR).replace(/\bLinda\b/g,first(CUR)); }
-function pstate(n){ return S.pt[n]||(S.pt[n]={stage:null,away:null,optedOut:false}); }
-function greetFor(n){
-  const r=S.rows.find(x=>x.name===n);
-  const greet = r ? `Hi ${first(n)}, it's Sherry from the health van. Reminder: your visit is ${r.time} on ${S.date} at the Dollar General, Pomeroy.\nReply CHANGE to move it, 2 to cancel, HELP for more.`
-                  : `Hi ${first(n)}, it's Sherry from the health van. We'll be at the Dollar General in Pomeroy on ${S.date}, 9 AM-3 PM.\nReply 1 to save a spot\nReply 2 if you can't come\nReply HELP for more options`;
-  return [{k:"psys",t:"Today 9:41 AM"},{k:"in",t:greet}];
-}
-function ensurePhone(n){ if(S.phones[n]) return false; S.phones[n]=greetFor(n); return true; }
+const TODAY="2026-11-14", MAIN="2026-12-15";
+const PATIENTS=["Linda M.","Ray T.","Carol S.","Donna K.","Rita S.","Mae W."];
+const POOL=["Hal R.","Ivy N.","June P.","Lou M.","Pearl D.","Otis F.","Vera K.","Wade H.","Nell B.","Cy A.","Faye L.","Gus T.","Mabel O.","Roy E.","Dot S.","Jess W."];
+const NEEDS=["Checkup","Medication refill","Blood pressure check","Diabetes follow-up","New problem"];
 
-/* ---------- build DOM once, then move phone/staff between views ---------- */
-$("park").appendChild($("phoneTpl").content.cloneNode(true));
+/* ---------- dates ---------- */
+const MON=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+function d0(iso){ const [y,m,d]=iso.split("-").map(Number); return new Date(Date.UTC(y,m-1,d,12)); }
+function iso(dt){ return dt.toISOString().slice(0,10); }
+function fmt(i){ return d0(i).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",timeZone:"UTC"}); }
+function addDays(i,n){ const d=d0(i); d.setUTCDate(d.getUTCDate()+n); return iso(d); }
+function mk(y,m,d){ const dt=new Date(Date.UTC(y,m,d,12)); if(dt.getUTCMonth()!==m) return null; return iso(dt); }
+function parseDate(text){
+  const l=text.toLowerCase(); let m=-1,d=-1,y=null,mt;
+  if((mt=l.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(st|nd|rd|th)?\b(?:,?\s*(20\d\d))?/))){ m=MON.indexOf(mt[1].slice(0,3)); d=+mt[2]; y=mt[4]?+mt[4]:null; }
+  else if((mt=l.match(/\b(\d{1,2})(st|nd|rd|th)?\s+(of\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/))){ d=+mt[1]; m=MON.indexOf(mt[4].slice(0,3)); }
+  else if((mt=l.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))){ m=+mt[1]-1; d=+mt[2]; if(mt[3]) y=+mt[3]<100?2000+ +mt[3]:+mt[3]; }
+  else if(/\btomorrow\b/.test(l)) return addDays(TODAY,1);
+  else if(/next week/.test(l)) return addDays(TODAY,7);
+  if(m<0||d<1) return null;
+  if(!y){ y=2026; const c=mk(y,m,d); if(!c||c<TODAY) y=2027; }
+  return mk(y,m,d);
+}
+
+/* ---------- views ---------- */
+document.querySelector("#park").appendChild($("phoneTpl").content.cloneNode(true));
 $("park").appendChild($("sideTpl").content.cloneNode(true));
 $("park").appendChild($("staffTpl").content.cloneNode(true));
 const phoneEl=$("phone"), sideEl=$("side"), staffEl=$("staff");
-
 function go(view){
   if(!["home","patient","staff","both"].includes(view)) view="home";
-  document.body.className = "v-"+view + (!L.showAI ? " hideai":"");
+  document.body.className="v-"+view+(!L.showAI?" hideai":"");
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.go===view));
-  $("park").append(phoneEl, sideEl, staffEl);
-  if(view==="patient"){ $("patientArea").append(phoneEl, sideEl); }
-  if(view==="staff"){ $("staffArea").append(staffEl); }
+  $("park").append(phoneEl,sideEl,staffEl);
+  if(view==="patient") $("patientArea").append(phoneEl,sideEl);
+  if(view==="staff") $("staffArea").append(staffEl);
   if(view==="both"){ $("bothPhone").append(phoneEl); $("bothStaff").append(staffEl); }
   setTimeout(()=>{ const m=$("msgs"); m.scrollTop=m.scrollHeight; const f=$("feed"); f.scrollTop=f.scrollHeight; },0);
   try{ if(location.hash!=="#"+view) history.replaceState(null,"","#"+view); }catch(e){}
@@ -307,159 +325,171 @@ function go(view){
 document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",e=>{ e.preventDefault(); go(el.dataset.go); }));
 window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
 
-/* ---------- shared state ---------- */
+/* ---------- state ---------- */
 let S;
-const L={live:null, signal:true, queue:[], showAI:true, typing:0, who:"Linda M."};
+const L={live:null,signal:true,queue:[],showAI:true,who:"Linda M.",view:MAIN,editing:null};
 const ME=Math.random().toString(36).slice(2,10);
+function hash(str){ let h=7; for(const c of str) h=(h*31+c.charCodeAt(0))>>>0; return h; }
+function seedRows(i){
+  if(i===MAIN) return [
+    {time:"9:00 AM",name:"Donna K.",need:"Blood pressure check",status:"booked"},
+    {time:"9:30 AM",name:"Carol S.",need:"Medication refill",status:"booked"},
+    {time:"10:00 AM",name:"Ray T.",need:"Medication refill",status:"booked"},
+    {time:"10:30 AM",name:"Bev S.",need:"Checkup",status:"booked"},
+    {time:"11:00 AM",name:"Rita S.",need:"Checkup",status:"booked"},
+    {time:"1:00 PM",name:"Gene P.",need:"Diabetes follow-up",status:"booked"}];
+  if(i<TODAY) return [];
+  const h=hash(i), n=2+(h%4), rows=[], used=new Set();
+  for(let k=0;k<n;k++){
+    let name=POOL[(h>>(k*3)+k*7)%POOL.length]; let g=0; while(used.has(name)&&g<20){ name=POOL[(POOL.indexOf(name)+1)%POOL.length]; g++; } used.add(name);
+    let t=TIMES[(h>>(k*2)+k*3)%TIMES.length]; while(rows.find(r=>r.time===t)) t=TIMES[(TIMES.indexOf(t)+1)%TIMES.length];
+    rows.push({time:t,name,need:NEEDS[(h>>k)%NEEDS.length],status:"booked"});
+  }
+  return rows.sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
+}
 function fresh(){
-  return {
-    date:"Tue, Dec 15",
-    rows:[
-      {time:"9:00 AM",name:"Donna K.",need:"Blood pressure check",status:"booked"},
-      {time:"9:30 AM",name:"Carol S.",need:"Medication refill",status:"booked"},
-      {time:"10:00 AM",name:"Ray T.",need:"Medication refill",status:"booked"},
-      {time:"10:30 AM",name:"Bev S.",need:"Checkup",status:"booked"},
-      {time:"11:00 AM",name:"Rita S.",need:"Checkup",status:"booked"},
-      {time:"1:00 PM",name:"Gene P.",need:"Diabetes follow-up",status:"booked"}
-    ],
-    waitlist:["Earl B.","Opal J."], tasks:[], feed:[], avoided:6, transport:0, auto:0,
-    script:0, pt:{}, moved:[], taskSeq:0,
-    phones:{"Linda M.":[{k:"psys",t:"Today 9:41 AM"},{k:"in",t:"Hi Linda, it's Sherry from the health van. We'll be at the Dollar General in Pomeroy on Tue, Dec 15, 9 AM-3 PM.\nReply 1 to save a spot\nReply 2 if you can't come\nReply HELP for more options"}]},
-    v:0, by:""
-  };
+  return {days:{}, taskSeq:0, tasks:[], feed:[], avoided:6, transport:0, auto:0, pt:{}, phones:{}, script:0, v:0, by:""};
+}
+function getDay(i){ if(!S.days[i]) S.days[i]={rows:seedRows(i), waitlist:i===MAIN?["Earl B.","Opal J."]:[]}; return S.days[i]; }
+function rowsOf(i){ return getDay(i).rows; }
+const sortRows=i=>rowsOf(i).sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
+function findBooking(name){ for(const i of Object.keys(S.days).sort()){ const r=S.days[i].rows.find(x=>x.name===name); if(r) return {iso:i,row:r}; } return null; }
+function freeSlot(i,pm){ const taken=rowsOf(i).map(r=>r.time); return (pm?TIMES.filter(t=>t.includes("PM")):TIMES).find(t=>!taken.includes(t)); }
+function bookOn(name,i,need,time){ const t=time||freeSlot(i,false); if(!t||rowsOf(i).find(r=>r.time===t)) return null; rowsOf(i).push({time:t,name,need:need||"Not said yet",status:"booked",flash:true}); sortRows(i); return t; }
+function removeBooking(name){ const b=findBooking(name); if(!b) return null; const rows=S.days[b.iso].rows; rows.splice(rows.indexOf(b.row),1); fillFromWaitlist(b.iso,b.row.time); return {iso:b.iso,time:b.row.time,need:b.row.need}; }
+function fillFromWaitlist(i,time){
+  const w=getDay(i).waitlist; if(!w.length||rowsOf(i).find(r=>r.time===time)) return;
+  const n=w.shift(); rowsOf(i).push({time,name:n,need:"From waitlist",status:"booked",flash:true}); sortRows(i); S.avoided++;
+  feedAdd("sys",`Waitlist: ${fmt(i)} ${time} offered to ${n} by automated call. ${n} pressed 1 ✓`); toast(`${time} on ${fmt(i)} filled from the waitlist: ${n}`);
+}
+function moveBooking(name,toIso,toTime){
+  const b=findBooking(name); if(!b) return null;
+  const t=toTime||freeSlot(toIso,false); if(!t) return null;
+  if(rowsOf(toIso).find(r=>r.time===t&&r.name!==name)) return null;
+  const need=b.row.need; const rows=S.days[b.iso].rows; rows.splice(rows.indexOf(b.row),1);
+  rowsOf(toIso).push({time:t,name,need,status:"booked",flash:true}); sortRows(toIso);
+  if(b.iso!==toIso||b.row.time!==t) fillFromWaitlist(b.iso,b.row.time);
+  return {fromIso:b.iso,fromTime:b.row.time,iso:toIso,time:t};
 }
 
-/* ---------- staff helpers ---------- */
-const findRow=n=>S.rows.find(r=>r.name===n);
-const sortRows=()=>S.rows.sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
-function freeSlot(pm){ const taken=S.rows.map(r=>r.time); return (pm?TIMES.filter(t=>t.includes("PM")):TIMES).find(t=>!taken.includes(t)); }
-function bookRow(name,need){ const t=freeSlot(false); if(!t) return null; S.rows.push({time:t,name,need,status:"booked",flash:true}); sortRows(); S.avoided++; return t; }
-function removeRow(name){ const r=findRow(name); if(!r) return null; S.rows.splice(S.rows.indexOf(r),1); return r.time; }
-function fillFromWaitlist(time){
-  if(!S.waitlist.length) return; const n=S.waitlist.shift();
-  if(S.rows.find(r=>r.time===time)) return; S.rows.push({time,name:n,need:"From waitlist",status:"booked",flash:true}); sortRows(); S.avoided++;
-  feedAdd("sys",`Waitlist: ${time} offered to ${n} by automated call. ${n} pressed 1 ✓`); toast(`${time} filled from the waitlist: ${n}`);
+/* ---------- small helpers ---------- */
+let CUR=null;
+const first=n=>String(n).split(" ")[0];
+function pstate(n){ return S.pt[n]||(S.pt[n]={stage:null,optedOut:false}); }
+function greetFor(n){
+  const b=findBooking(n);
+  const greet=b?`Hi ${first(n)}, it's Sherry from the health van. Reminder: your visit is ${b.row.time} on ${fmt(b.iso)} at the Dollar General, Pomeroy.\nReply CHANGE to move it, 2 to cancel, HELP for more.`
+              :`Hi ${first(n)}, it's Sherry from the health van. We'll be at the Dollar General in Pomeroy on ${fmt(MAIN)}, 9 AM-3 PM.\nReply 1 to save a spot, or text any date that works for you.\nReply HELP for more options.`;
+  return [{k:"psys",t:"Today 9:41 AM"},{k:"in",t:greet}];
 }
-function addTask(t){ t.id=++S.taskSeq; if(CUR){ t.title=nm(t.title); t.detail=nm(t.detail); t.who=CUR; (t.acts||[]).forEach(a=>{ a.doneText=nm(a.doneText); }); } S.tasks.unshift(t); renderStaff(); }
-function feedAdd(kind,html,ai){ html=nm(html); S.feed.push({kind,html,ai}); if(S.feed.length>80) S.feed.splice(0,S.feed.length-80); commit(); }
-function toast(t){ if(REPLAY) return; t=nm(t); const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),2400); }
-
-/* ---------- phone helpers ---------- */
+function ensurePhone(n){ if(S.phones[n]) return false; S.phones[n]=greetFor(n); return true; }
 function pushPhone(who,item){ ensurePhone(who); const a=S.phones[who]; a.push(item); if(a.length>140) a.splice(0,a.length-140); }
-function bubble(t,dir,who){ pushPhone(who||CUR||L.who,{k:dir,t:nm(t)}); commit(); }
-function renderPhone(){
-  const m=$("msgs");
-  const arr=S.phones[L.who]||greetFor(L.who);
-  const html=arr.map(x=>{ const cls=(x.k==="ai"||x.k==="psys")?x.k:"b "+x.k; return `<div class="${cls}">${esc(x.t)}</div>`; }).join("")
-    + L.queue.map(q=>`<div class="b out queued">${esc(q)}</div>`).join("")
-    + (L.typing>0?'<div class="typing">…</div>':"");
-  if(m._last!==html){ m.innerHTML=html; m._last=html; m.scrollTop=m.scrollHeight; }
-}
-function toPhone(t,who,quiet){
-  who=who||CUR||L.who; const msg=nm(t);
-  pushPhone(who,{k:"in",t:msg});
-  if(quiet) commit(); else feedAdd("out",`→ To ${esc(who)}: ${esc(msg)}`);
-}
-function lindaIn(t,ai){ feedAdd("in",`<span class="who">${esc(CUR||L.who)} (texting)</span><br>“${esc(t)}”`,ai); }
+function bubble(t,dir,who){ pushPhone(who||CUR||L.who,{k:dir,t}); commit(); }
+function toPhone(t,who,quiet){ who=who||CUR||L.who; pushPhone(who,{k:"in",t}); if(quiet) commit(); else feedAdd("out",`→ To ${esc(who)}: ${esc(t)}`); }
+function feedAdd(kind,html,ai){ S.feed.push({kind,html,ai}); if(S.feed.length>80) S.feed.splice(0,S.feed.length-80); commit(); }
+function addTask(t){ t.id=++S.taskSeq; if(CUR) t.who=CUR; S.tasks.unshift(t); if(S.tasks.length>40) S.tasks.length=40; commit(); }
+function done(t,txt){ t.done=true; t.doneText=txt; commit(); toast(txt); }
+function toast(t){ if(REPLAY) return; const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),2400); }
 
-/* ---------- Linda's texts: the AI ---------- */
-function handleLinda(raw,who){ CUR=who||L.who; try{ handleCore(raw); } finally { CUR=null; } }
+/* ---------- the patient's texts: what the AI understands ---------- */
+function handlePatient(raw,who){ CUR=who||L.who; try{ handleCore(raw); } finally{ CUR=null; } }
 function handleCore(raw){
-  const t=raw.trim(), l=t.toLowerCase(); const L=pstate(CUR);
-  const tag=label=>{ bubble("🤖 understood as: "+label,"ai"); lindaIn(t,label); };
-  const me=findRow(CUR);
+  const t=raw.trim(), l=t.toLowerCase(), N=CUR, F=first(N), P=pstate(N);
+  const tag=label=>{ pushPhone(N,{k:"ai",t:"🤖 understood as: "+label}); feedAdd("in",`<span class="who">${esc(N)} (texting)</span><br>“${esc(t)}”`,label); };
+  const b=findBooking(N);
+  const toDate=(dIso,label)=>{
+    if(N===L.who) L.view=dIso;
+    if(dIso<TODAY){ toPhone(`Sorry, ${fmt(dIso)} has already passed. Text another date.`); return; }
+    if(b){ const m=moveBooking(N,dIso); if(!m){ toPhone(`Sorry, ${fmt(dIso)} is full. Text another date, or reply CHANGE for options.`); return; }
+      tag(label||"MOVE → "+fmt(dIso).toUpperCase()); S.auto++; toPhone(`Done! You're now booked for ${m.time} on ${fmt(dIso)} at the Dollar General, Pomeroy. Reply CHANGE anytime to move it.`); toast(`${N} moved to ${fmt(dIso)} ${m.time}`); }
+    else { const s=bookOn(N,dIso); if(!s){ toPhone(`Sorry, ${fmt(dIso)} is full. Text another date.`); return; } S.avoided++; S.auto++;
+      tag(label||"BOOK → "+fmt(dIso).toUpperCase()); P.stage="need"; toPhone(`You're booked for ${s} on ${fmt(dIso)} at the Dollar General, Pomeroy.`);
+      toPhone("What's the visit for? This helps the nurse get ready.\n1 Checkup\n2 Medication refill\n3 New problem\nOr tell us in your own words."); toast(`${N} booked ${fmt(dIso)} ${s}`); }
+  };
 
   if(/chest|can'?t breathe|cant breathe|trouble breathing|faint|passed out|stroke|bleeding|overdose|suicid|kill myself/.test(l)){
-    tag("MEDICAL · URGENT");
-    toPhone("If this is happening now, please call 911. A nurse has been alerted and will call you right away.");
-    addTask({kind:"urgent",title:"URGENT: Linda M. texted “"+t+"”",detail:"Told to call 911. Call them now.",acts:[{label:"Called ✓",doneText:"Nurse reached Linda",phone:"☎ Call from the clinic nurse · 3 min"}]});
-    toast("URGENT message from Linda"); return;
+    tag("MEDICAL · URGENT"); toPhone("If this is happening now, please call 911. A nurse has been alerted and will call you right away.");
+    addTask({kind:"urgent",title:`URGENT: ${N} texted “${t}”`,detail:"Told to call 911. Call them now.",acts:[{label:"Called ✓",doneText:`Nurse reached ${F}`,phone:"☎ Call from the clinic nurse · 3 min"}]});
+    toast(`URGENT message from ${N}`); return;
   }
-  if(/^stop$/.test(l)){ tag("OPT OUT"); L.optedOut=true; toPhone("You won't get more texts from the health van. Reply START to turn them back on."); return; }
-  if(/^start$/.test(l)){ tag("OPT IN"); L.optedOut=false; toPhone("Welcome back! Reply HELP to see what you can do."); return; }
-  if(L.optedOut){ tag("OPTED OUT"); toPhone("You've opted out of texts. Reply START to turn them back on."); return; }
-  if(/^(help|menu|\?)$/.test(l)){ tag("HELP"); S.auto++; toPhone("You can reply:\n1 Book a spot\n2 Cancel\nCHANGE Another day or time\nWHERE Where's the van\nCALL ME A nurse calls you\nOr just tell us in your own words."); return; }
+  if(/^stop$/.test(l)){ tag("OPT OUT"); P.optedOut=true; toPhone("You won't get more texts from the health van. Reply START to turn them back on."); return; }
+  if(/^start$/.test(l)){ tag("OPT IN"); P.optedOut=false; toPhone("Welcome back! Reply HELP to see what you can do."); return; }
+  if(P.optedOut){ tag("OPTED OUT"); toPhone("You've opted out of texts. Reply START to turn them back on."); return; }
+  if(/^(help|menu|\?)$/.test(l)){ tag("HELP"); S.auto++; toPhone("You can reply:\n1 Book a spot\n2 Cancel\nCHANGE Another day or time\nAny date, like “Jan 15”\nWHERE Where's the van\nCALL ME A nurse calls you\nOr just tell us in your own words."); return; }
 
-  if(L.stage==="need"){
-    L.stage=null;
-    if(/^3$/.test(l)){ L.stage="problem"; tag("NEW PROBLEM"); toPhone("Sorry to hear that. What's going on? A few words is fine."); return; }
-    const need=/^1$|check ?up|physical/.test(l)?"Checkup":/^2$|refill|med|pill|prescription/.test(l)?"Medication refill":"“"+t+"”";
-    if(me){ me.need=need; me.flash=true; } tag("VISIT FOR: "+need.toUpperCase()); S.auto++;
-    toPhone("Thanks! The nurse will see that before your visit. We'll text you the day before.\nNeed a ride? "+TRANSIT+"\nReply CHANGE to move it, 2 to cancel."); renderStaff(); return;
+  const dIso=parseDate(t);
+
+  if(P.stage==="need"){
+    P.stage=null;
+    if(/^3$/.test(l)){ P.stage="problem"; tag("NEW PROBLEM"); toPhone("Sorry to hear that. What's going on? A few words is fine."); return; }
+    const need=/^1$|check ?up|physical/.test(l)?"Checkup":/^2$|refill|med|pill|prescription/.test(l)?"Medication refill":`“${t}”`;
+    const bb=findBooking(N); if(bb){ bb.row.need=need; bb.row.flash=true; }
+    tag("VISIT FOR: "+need.toUpperCase()); S.auto++;
+    toPhone("Thanks! The nurse will see that before your visit. We'll text you the day before.\nNeed a ride? "+TRANSIT+"\nReply CHANGE to move it, 2 to cancel."); return;
   }
-  if(L.stage==="problem"){ L.stage=null; if(me){ me.need="New problem: “"+t+"”"; me.flash=true; } tag("NOTE FOR NURSE"); S.auto++; toPhone("Got it. The nurse will read that before your visit. If it gets worse, call 911."); renderStaff(); return; }
-  if(L.stage==="change"){
-    L.stage=null; const o=OPTS[parseInt(l,10)-1];
-    if(!o){ tag("KEEP"); toPhone(me?`Okay, keeping ${me.time} on ${S.date}.`:"Okay, no change."); return; }
-    if(o[2].startsWith("Pomeroy, later")){
-      const slot=freeSlot(true); if(!slot||!me){ tag("CHANGE TIME"); toPhone("Sorry, no later times are open that day. Reply CHANGE for another day."); return; }
-      const old=me.time; me.time=slot; me.flash=true; sortRows(); tag("MOVE → "+slot); S.auto++;
-      toPhone(`Done! You're now booked for ${slot} on ${S.date}.`); renderStaff(); fillFromWaitlist(old); return;
-    }
-    const old=me?removeRow(CUR):null; L.away=`${o[2]}, ${o[0]} ${o[1]}`; S.moved=S.moved.filter(m=>m.name!==CUR); S.moved.push({name:CUR,where:L.away}); tag("MOVE → "+o[2].toUpperCase()); S.auto++;
-    toPhone(`Done! You're now booked for ${o[1]} on ${o[0]} (${o[2]}).`);
-    feedAdd("sys",`Linda moved to ${L.away}. She's off today's Pomeroy list.`); renderStaff(); if(old) fillFromWaitlist(old); return;
-  }
-  if(L.stage==="far"){
-    L.stage=null;
-    if(/^1$/.test(l)||/^2$/.test(l)){ const o=/^1$/.test(l)?OPTS[1]:OPTS[2]; const old=me?removeRow(CUR):null; L.away=`${o[2]}, ${o[0]} ${o[1]}`; S.moved=S.moved.filter(m=>m.name!==CUR); S.moved.push({name:CUR,where:L.away}); tag("MOVE → "+o[2].toUpperCase()); toPhone(`Done! You're booked for ${o[1]} on ${o[0]} (${o[2]}).`); renderStaff(); if(old) fillFromWaitlist(old); return; }
+  if(P.stage==="problem"){ P.stage=null; const bb=findBooking(N); if(bb){ bb.row.need=`New problem: “${t}”`; bb.row.flash=true; } tag("NOTE FOR NURSE"); S.auto++; toPhone("Got it. The nurse will read that before your visit. If it gets worse, call 911."); return; }
+  if(P.stage==="change"){
+    P.stage=null;
+    if(dIso){ toDate(dIso); return; }
+    const base=b?b.iso:MAIN;
+    if(/^1$/.test(l)){ if(!b){ toDate(MAIN); return; } const s=freeSlot(b.iso,true); if(!s){ toPhone("No later times that day. Text a date instead, like “Jan 15”."); return; } const m=moveBooking(N,b.iso,s); tag("MOVE → LATER SAME DAY"); S.auto++; toPhone(`Done! You're now booked for ${m.time} on ${fmt(b.iso)}.`); return; }
+    if(/^2$/.test(l)){ toDate(addDays(base,7),"MOVE → NEXT WEEK"); return; }
+    if(/^3$/.test(l)){ toDate(addDays(base,35),"MOVE → NEXT MONTH"); return; }
+    tag("KEEP"); toPhone(b?`Okay, keeping ${b.row.time} on ${fmt(b.iso)}.`:"Okay, no change."); return;
   }
 
-  if(/change|reschedul|move it|different (day|time)|another (day|time)|later|earlier|switch/.test(l)){
-    L.stage="change"; tag("CHANGE DATE"); toPhone("Sure! Pick a new time:\n"+OPTS.map((o,i)=>`${i+1} ${o[2]}: ${o[0]}${o[1]==="afternoon"?" afternoon":", "+o[1]}`).join("\n")+"\nOr reply KEEP."); return;
+  if(/change|reschedul|move it|different (day|time|date)|another (day|time|date)|later|earlier|switch|instead/.test(l)){
+    if(dIso){ toDate(dIso); return; }
+    P.stage="change"; const base=b?b.iso:MAIN; tag("CHANGE DATE");
+    toPhone(`Sure! Reply with any date that works, like “Jan 15”, or pick:\n1 Later the same day\n2 Next week, ${fmt(addDays(base,7))}\n3 Next month, ${fmt(addDays(base,35))}\nOr reply KEEP.`); return;
   }
   if(/truck|car\b|ride|no way to get|cant get there|can't get there|transport|gas/.test(l)){
-    L.stage="far"; tag("CAN'T GET THERE"); S.transport++;
-    toPhone("Sorry about that. We can't provide rides ourselves, but this may help:\n"+TRANSIT+"\nOr a stop that might be closer:\n1 Racine, Thu Dec 10\n2 Pomeroy next month, Tue Jan 19");
-    addTask({kind:"transport",title:"Linda M. can't get to Pomeroy",detail:"AI: transport problem. Transit info and closer stops sent automatically.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return;
+    tag("CAN'T GET THERE"); S.transport++; P.stage="change";
+    toPhone("Sorry about that. We can't provide rides ourselves, but this may help:\n"+TRANSIT+"\nOr text a date that's easier for you, like “Jan 15”.");
+    addTask({kind:"transport",title:`${N} can't get to Pomeroy`,detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return;
   }
   if(/^(2|no|nope|cancel|cant come|can't come|cant make it|can't make it)\b/.test(l)){
     tag("CANCEL");
-    if(me||L.away){ const old=me?removeRow(CUR):null; L.away=null; S.moved=S.moved.filter(m=>m.name!==CUR); S.auto++; toPhone("Okay, Linda, your visit is cancelled. No problem at all. Reply 1 anytime to book again."); renderStaff(); if(old) fillFromWaitlist(old); }
-    else toPhone("No problem, Linda. Want a spot next month, Tue Jan 19? Reply CHANGE to pick, or reply when you're ready.");
+    if(b){ removeBooking(N); S.auto++; toPhone(`Okay, ${F}, your ${fmt(b.iso)} visit is cancelled. No problem at all. Text a date anytime to book again.`); }
+    else toPhone(`No problem, ${F}. Text any date that works for you, like “Jan 15”, whenever you're ready.`);
     return;
   }
+  if(dIso){ toDate(dIso); return; }
   if(/^(1|yes|yeah|yep|ok|okay|sure|book|ill be there|i'll be there|sounds good)\b/.test(l)){
-    if(me){ tag("ALREADY BOOKED"); toPhone(`You're already booked for ${me.time} on ${S.date}. Reply CHANGE to move it.`); return; }
-    const slot=bookRow(CUR,"Not said yet");
-    if(!slot){ tag("BOOK → WAITLIST"); S.waitlist.push(CUR); toPhone("That day is full, so you're on the waitlist. We'll text you if a spot opens."); renderStaff(); return; }
-    L.away=null; L.stage="need"; tag("BOOK"); S.auto++; renderStaff(); toast("Linda booked herself: "+slot);
-    toPhone(`You're booked for ${slot} on ${S.date} at the Dollar General, Pomeroy.`);
-    toPhone("What's the visit for? This helps the nurse get ready.\n1 Checkup\n2 Medication refill\n3 New problem\nOr tell us in your own words.");
-    return;
+    if(b){ tag("ALREADY BOOKED"); toPhone(`You're already booked for ${b.row.time} on ${fmt(b.iso)}. Reply CHANGE or text a date to move it.`); return; }
+    if(!freeSlot(MAIN,false)){ tag("BOOK → WAITLIST"); getDay(MAIN).waitlist.push(N); toPhone(`${fmt(MAIN)} is full, so you're on the waitlist. Or text another date.`); return; }
+    toDate(MAIN,"BOOK"); return;
   }
   if(/call me|talk to (a )?(person|nurse|someone)|speak to/.test(l)){
     tag("CALL-BACK"); toPhone("Got it. A nurse will call you today before 4 PM.");
-    addTask({kind:"call",title:"Linda M. asked for a call back",detail:"Prefers to talk to a person.",acts:[{label:"Called ✓",doneText:"Nurse called Linda",phone:"☎ Call from the clinic nurse · 4 min"}]}); return;
+    addTask({kind:"call",title:`${N} asked for a call back`,detail:"Prefers to talk to a person.",acts:[{label:"Called ✓",doneText:`Nurse called ${F}`,phone:"☎ Call from the clinic nurse · 4 min"}]}); return;
   }
-  if(/^where\b|where('s| is) the van/.test(l)){ tag("WHERE IS THE VAN"); S.auto++; toPhone("🚐 The van left Athens at 8:05 AM and is about 15 minutes from the Dollar General in Pomeroy."); renderStaff(); return; }
-  if(/\b457\d\d\b/.test(l)){ tag("ZIP → NEAREST STOPS"); S.auto++; toPhone("Closest stops to "+l.match(/457\d\d/)[0]+":\n1 Pomeroy, about 4 mi: Tue Dec 15\n2 Racine, about 11 mi: Thu Dec 10\nReply 1 to book Pomeroy."); renderStaff(); return; }
-  if(/bring|what do i need|insurance|cost|how much|free\b/.test(l)){ tag("WHAT TO BRING / COST"); S.auto++; toPhone("The visit is free and insurance isn't needed. Please bring your pill bottles, papers from other doctors, and a photo ID if you have one."); renderStaff(); return; }
+  if(/^where\b|where('s| is) the van/.test(l)){ tag("WHERE IS THE VAN"); S.auto++; toPhone("🚐 The van left Athens at 8:05 AM and is about 15 minutes from the Dollar General in Pomeroy."); return; }
+  if(/\b457\d\d\b/.test(l)){ tag("ZIP → NEAREST STOPS"); S.auto++; toPhone("Closest stops to "+l.match(/457\d\d/)[0]+":\n1 Pomeroy, about 4 mi\n2 Racine, about 11 mi\nReply 1 to book Pomeroy, or text a date."); return; }
+  if(/bring|what do i need|insurance|cost|how much|free\b/.test(l)){ tag("WHAT TO BRING / COST"); S.auto++; toPhone("The visit is free and insurance isn't needed. Please bring your pill bottles, papers from other doctors, and a photo ID if you have one."); return; }
   if(/sick|pain|hurt|cough|fever|sugar|blood pressure|medicine|meds|dizzy|rash/.test(l)){
     tag("HEALTH QUESTION → NURSE"); toPhone("Thanks for telling us. A nurse will read this and call you today. We can't give medical advice by text. If it's an emergency, call 911.");
-    addTask({kind:"health",title:"Linda M. health question",detail:"“"+t+"”. No advice was given by text.",acts:[{label:"Called ✓",doneText:"Nurse called Linda",phone:"☎ Call from the clinic nurse · 5 min"}]}); return;
+    addTask({kind:"health",title:`${N} health question`,detail:`“${t}”. No advice was given by text.`,acts:[{label:"Called ✓",doneText:`Nurse called ${F}`,phone:"☎ Call from the clinic nurse · 5 min"}]}); return;
   }
-  if(/thank|thx|bless/.test(l)){ tag("THANKS"); S.auto++; toPhone("You're welcome, Linda! See you at the van. 🚐"); renderStaff(); return; }
+  if(/thank|thx|bless/.test(l)){ tag("THANKS"); S.auto++; toPhone(`You're welcome, ${F}! See you at the van. 🚐`); return; }
   tag("NOT SURE → STAFF");
   toPhone("Sorry, we didn't catch that. A staff member will read it. Reply HELP to see what you can text.");
-  addTask({kind:"unclear",title:"Unclear text from Linda M.",detail:"“"+t+"”",acts:[{label:"Reply sent ✓",doneText:"Staff replied"}]});
+  addTask({kind:"unclear",title:`Unclear text from ${N}`,detail:`“${t}”`,acts:[{label:"Reply sent ✓",doneText:"Staff replied"}]});
 }
-function done(x,txt){ x.done=true; x.doneText=txt; renderStaff(); toast(txt); }
-
 function sendFromPhone(t){
   if(!t.trim()) return;
   if(!L.signal){ L.queue.push(t); renderPhone(); return; }
   dispatch({t:"text",v:t,who:L.who});
 }
 
-/* ---------- other patients (staff demo) ---------- */
+/* ---------- other patients (scripted, on the main day) ---------- */
 const SCRIPT=[
-  {who:"Mae W.",text:"yeah ill be there",ai:"BOOK",run:()=>{ const t=bookRow("Mae W.","Checkup"); S.auto++; return t?`Booked ${t}.`:"Day full, added to waitlist."; }},
-  {who:"Hank D.",text:"cant make it, truck broke",ai:"CAN'T GET THERE",run:()=>{ S.transport++; addTask({kind:"transport",title:"Hank D. can't get to Pomeroy",detail:"Transit info and closer stops sent automatically.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return "Transport barrier logged; transit info sent."; }},
-  {who:"Gene P.",text:"my chest has been tight since last night",ai:"MEDICAL · URGENT",run:()=>{ addTask({kind:"urgent",title:"URGENT: Gene P. chest tightness",detail:"Told to call 911. Call him now.",acts:[{label:"Called ✓",doneText:"Nurse reached Gene"}]}); toast("URGENT message from Gene P."); return "911 guidance sent; flagged URGENT."; }},
-  {who:"Bev S.",text:"2",ai:"CANCEL",run:()=>{ const t=removeRow("Bev S."); S.auto++; if(t) fillFromWaitlist(t); return t?`Cancelled ${t}; offered to waitlist.`:"Not found."; }},
+  {who:"Mae W.",text:"yeah ill be there",ai:"BOOK",run:()=>{ if(findBooking("Mae W.")) return "Already booked."; const t=bookOn("Mae W.",MAIN,"Checkup"); if(t){S.avoided++;} S.auto++; return t?`Booked ${fmt(MAIN)} ${t}.`:"Day full, added to waitlist."; }},
+  {who:"Hank D.",text:"cant make it, truck broke",ai:"CAN'T GET THERE",run:()=>{ S.transport++; addTask({kind:"transport",title:"Hank D. can't get to Pomeroy",detail:"Transit info sent automatically. Offered another date.",acts:[{label:"Noted ✓",doneText:"Counted for the transport report"}]}); return "Transport barrier logged; transit info sent."; }},
+  {who:"Gene P.",text:"my chest has been tight since last night",ai:"MEDICAL · URGENT",run:()=>{ addTask({kind:"urgent",title:"URGENT: Gene P. chest tightness",detail:"Told to call 911. Call them now.",acts:[{label:"Called ✓",doneText:"Nurse reached Gene"}]}); toast("URGENT message from Gene P."); return "911 guidance sent; flagged URGENT."; }},
+  {who:"Bev S.",text:"can i come jan 12 instead",ai:"MOVE → "+fmt("2027-01-12").toUpperCase(),run:()=>{ const m=moveBooking("Bev S.","2027-01-12"); S.auto++; return m?`Moved to ${fmt("2027-01-12")} ${m.time}. Her old slot went to the waitlist.`:"Not booked."; }},
   {who:"Opal J. (waitlist)",text:"CALL ME",ai:"CALL-BACK",run:()=>{ addTask({kind:"call",title:"Opal J. asked for a call back",detail:"On the waitlist.",acts:[{label:"Called ✓",doneText:"Nurse called Opal"}]}); return "Sent to staff as a call-back."; }},
-  {who:"Dottie (health messenger)",text:"LOG pantry talked to 9, 2 signed up: Lena F, Wes C",ai:"MESSENGER REPORT",run:()=>{ const a=[]; ["Lena F.","Wes C."].forEach(n=>{ const t=bookRow(n,"Not said yet"); if(t) a.push(n+" "+t); else S.waitlist.push(n); }); S.auto++; return "9 reached. Added: "+(a.join(", ")||"to waitlist")+"."; }},
+  {who:"Dottie (health messenger)",text:"LOG pantry talked to 9, 2 signed up: Lena F, Wes C",ai:"MESSENGER REPORT",run:()=>{ const a=[]; ["Lena F.","Wes C."].forEach(n=>{ const t=bookOn(n,MAIN); if(t){a.push(n+" "+t); S.avoided++;} else getDay(MAIN).waitlist.push(n); }); S.auto++; return "9 reached. Added: "+(a.join(", ")||"to waitlist")+"."; }},
   {who:"(unknown number)",text:"is this the dentist",ai:"NOT SURE → STAFF",run:()=>{ addTask({kind:"unclear",title:"Unclear text from unknown number",detail:"“is this the dentist”",acts:[{label:"Reply sent ✓",doneText:"Clinic info sent"}]}); return "Sent to staff."; }}
 ];
 function nextScripted(){
@@ -471,90 +501,122 @@ function nextScripted(){
 function startLive(){ $("liveBtn").textContent="⏸ Pause"; $("liveBtn").classList.add("live"); dispatch({t:"next"}); L.live=setInterval(()=>dispatch({t:"next"}),4500); }
 function stopLive(){ if(L.live) clearInterval(L.live); L.live=null; $("liveBtn").textContent="▶ Live feed"; $("liveBtn").classList.remove("live"); }
 
-/* ---------- render staff ---------- */
+/* ---------- render: staff ---------- */
 function drawStaff(){
-  $("stopDate").textContent=S.date;
-  const taken=S.rows.map(r=>r.time);
+  const V=L.view, rows=rowsOf(V), taken=rows.map(r=>r.time);
+  if($("viewDate").value!==V) $("viewDate").value=V;
+  // day chips: days with visits
+  const days=Object.keys(S.days).filter(i=>S.days[i].rows.length&&i>=TODAY).sort();
+  if(!days.includes(V)) days.push(V), days.sort();
+  $("dayChips").innerHTML=days.map(i=>`<button class="chip ${i===V?'on':''}" data-day="${i}">${fmt(i)} · ${getDay(i).rows.length}</button>`).join("");
   $("list").innerHTML=TIMES.map(t=>{
-    const r=S.rows.find(x=>x.time===t);
+    const r=rows.find(x=>x.time===t);
     if(!r) return `<tr class="open"><td>${t}</td><td colspan="3"><span class="pill p-open">Open</span></td><td></td></tr>`;
-    const same=TIMES.filter(x=>!taken.includes(x)).map(x=>`<option value="T:${x}">${x} (same day)</option>`).join("");
-    const days=DAYS.map((d,k)=>`<option value="D:${k}">${d[0]}, ${d[1]}</option>`).join("");
-    const opts=(same?`<optgroup label="Same day, ${esc(S.date)}">${same}</optgroup>`:"")+`<optgroup label="Another day">${days}</optgroup>`;
     const st=r.status==="arrived"?'<span class="pill p-arrived">Arrived</span>':'<span class="pill p-booked">Booked</span>';
-    return `<tr class="${r.flash?'flash':''} ${r.name===L.who?'me':''}"><td>${t}</td><td>${esc(r.name)}${r.name===L.who?' <span class="small">(you)</span>':''}</td><td class="small">${esc(r.need)}</td><td>${st}</td>
-      <td class="acts"><button class="btn ghost" data-a="arr" data-n="${esc(r.name)}">${r.status==="arrived"?"Undo":"✓ Arrived"}</button>${true?`<select class="moveSel" data-n="${esc(r.name)}" aria-label="Move ${esc(r.name)}"><option value="">Move…</option>${opts}</select>`:""}<button class="btn ghost" data-a="cxl" data-n="${esc(r.name)}" aria-label="Cancel ${esc(r.name)}">✕</button></td></tr>`;
+    const same=TIMES.filter(x=>!taken.includes(x)).map(x=>`<option value="T:${x}">${x}</option>`).join("");
+    const main=`<tr class="${r.flash?'flash':''} ${r.name===L.who?'me':''}"><td>${t}</td><td>${esc(r.name)}${r.name===L.who?' <span class="small">(you)</span>':''}</td><td class="small">${esc(r.need)}</td><td>${st}</td>
+      <td class="acts"><button class="btn ghost" data-a="arr" data-n="${esc(r.name)}">${r.status==="arrived"?"Undo":"✓ Arrived"}</button><select class="moveSel" data-n="${esc(r.name)}" aria-label="Move ${esc(r.name)}"><option value="">Move…</option><option value="D">📅 Pick a date…</option>${same?`<optgroup label="Same day">${same}</optgroup>`:""}</select><button class="btn ghost" data-a="cxl" data-n="${esc(r.name)}" aria-label="Cancel ${esc(r.name)}">✕</button></td></tr>`;
+    const edit= L.editing===r.name ? `<tr class="edit"><td></td><td colspan="4"><div class="editrow">Move ${esc(r.name)} to <input type="date" class="edDate" min="${TODAY}" value="${addDays(V,7)}" aria-label="New date"> at <select class="edTime" aria-label="New time"></select><button class="btn" data-a="doMove" data-n="${esc(r.name)}">Move & text patient</button><button class="btn ghost" data-a="noMove">Cancel</button></div></td></tr>` : "";
+    return main+edit;
   }).join("");
-  S.rows.forEach(r=>r.flash=false);
-  $("waitlist").textContent=S.waitlist.length?S.waitlist.join(", "):"empty";
-  $("movedList").innerHTML=S.moved.length?"Moved to other days: "+S.moved.map(m=>`<b>${esc(m.name)}</b> → ${esc(m.where)}`).join(" · "):"";
-  const sd=$("stopDateSel"); const opts2=STOP_DATES.includes(S.date)?STOP_DATES:[S.date,...STOP_DATES];
-  const sdh=opts2.map(d=>`<option ${d===S.date?"selected":""}>${d}</option>`).join(""); if(sd._h!==sdh){ sd.innerHTML=sdh; sd._h=sdh; }
+  rows.forEach(r=>r.flash=false);
+  $("waitlist").textContent=getDay(V).waitlist.length?getDay(V).waitlist.join(", "):"empty";
   const pend=S.tasks.filter(t=>!t.done).length;
-  $("sBooked").textContent=S.rows.length; $("sOpen").textContent=TIMES.length-S.rows.length;
+  $("sBooked").textContent=rows.length; $("sOpen").textContent=TIMES.length-rows.length;
   $("sTasks").textContent=pend; $("taskCount").textContent=pend;
   $("sAvoided").textContent=S.avoided; $("sTransport").textContent=S.transport; $("sAuto").textContent=S.auto;
-  const TAG={urgent:'<span class="tag t-urgent">URGENT</span>',call:'<span class="tag t-call">Call-back</span>',transport:'<span class="tag t-transport">Transport</span>',unclear:'<span class="tag t-unclear">Unclear</span>',health:'<span class="tag t-health">Health question</span>',new:'<span class="tag t-new">New patient</span>'};
+  const TAG={urgent:'<span class="tag t-urgent">URGENT</span>',call:'<span class="tag t-call">Call-back</span>',transport:'<span class="tag t-transport">Transport</span>',unclear:'<span class="tag t-unclear">Unclear</span>',health:'<span class="tag t-health">Health question</span>'};
   $("tasks").innerHTML=S.tasks.length?S.tasks.map((t,i)=>`<div class="task ${t.kind==='urgent'&&!t.done?'urgent':''} ${t.done?'done':''}">${TAG[t.kind]||""}<div class="t">${esc(t.title)}</div><div class="d">${esc(t.detail)}</div>${t.done?`<div class="small">✓ ${esc(t.doneText)}</div>`:(t.acts||[]).map((a,j)=>`<button class="btn ${t.kind==='urgent'?'warn':''}" data-t="${t.id}" data-j="${j}">${esc(a.label)}</button>`).join("")}</div>`).join(""):'<div class="small">Nothing needs a person right now. Text from the patient phone, or press <b>Next patient message</b>.</div>';
   bindStaff();
 }
-function renderStaff(){ commit(); }
-function renderFeed(){ commit(); }
+function fillTimes(sel,dateIso,exceptName){
+  const taken=rowsOf(dateIso).filter(r=>r.name!==exceptName).map(r=>r.time);
+  const open=TIMES.filter(t=>!taken.includes(t));
+  sel.innerHTML=open.length?open.map(t=>`<option>${t}</option>`).join(""):'<option value="">Full</option>';
+}
+function bindStaff(){
+  document.querySelectorAll("#dayChips .chip").forEach(c=>c.onclick=()=>{ L.view=c.dataset.day; L.editing=null; renderAll(); });
+  document.querySelectorAll("#tasks button[data-t]").forEach(b=>b.onclick=()=>dispatch({t:"task",k:+b.dataset.t,j:+b.dataset.j}));
+  document.querySelectorAll("#list button[data-a]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;
+    if(a==="noMove"){ L.editing=null; renderAll(); return; }
+    if(a==="arr"||a==="cxl"){ dispatch({t:a,n:b.dataset.n}); return; }
+    if(a==="doMove"){
+      const tr=b.closest("tr"); const nd=tr.querySelector(".edDate").value; const nt=tr.querySelector(".edTime").value;
+      if(!nd||!nt){ toast("Pick a date with an open time"); return; }
+      if(nd<TODAY){ toast("That date has passed"); return; }
+      L.editing=null; dispatch({t:"move",n:b.dataset.n,d:nd,time:nt,how:"date"}); return;
+    }
+  });
+  document.querySelectorAll("#list select.moveSel").forEach(sel=>sel.onchange=()=>{
+    const v=sel.value; if(!v) return; const n=sel.dataset.n;
+    if(v==="D"){ L.editing=n; renderAll(); const tr=document.querySelector("#list tr.edit"); if(tr){ const di=tr.querySelector(".edDate"), ts=tr.querySelector(".edTime"); fillTimes(ts,di.value,n); di.onchange=()=>fillTimes(ts,di.value,n); di.focus(); } return; }
+    const bk=findBooking(n); if(!bk) return; dispatch({t:"move",n,d:bk.iso,time:v.slice(2),how:"time"});
+  });
+}
+/* staff actions: run on every device, in the same order */
+function doTask(id,j){ const t=S.tasks.find(x=>x.id===id); if(!t||t.done) return; const a=(t.acts||[])[j]; if(!a) return; if(a.phone&&t.who) pushPhone(t.who,{k:"psys",t:a.phone}); done(t,a.doneText); }
+function doArr(n){ const bk=findBooking(n); if(!bk) return; const r=bk.row; r.status=r.status==="arrived"?"booked":"arrived"; r.flash=true; if(r.status==="arrived"&&S.phones[r.name]) pushPhone(r.name,{k:"psys",t:"✅ Checked in at the van"}); commit(); }
+function doCxl(n){ if(!findBooking(n)) return; const was=removeBooking(n); toPhone(`Hi ${first(n)}, it's Sherry. We had to cancel your ${was.time} visit on ${fmt(was.iso)}. Text any date to pick a new one. Sorry!`, n); }
+function doMove(n,d,time,how){
+  const bk=findBooking(n); if(!bk||!d||!time) return;
+  const m=moveBooking(n,d,time); if(!m){ toast("That time is taken"); return; }
+  if(how==="time") toPhone(`Hi ${first(n)}, it's Sherry. Your visit moved from ${m.fromTime} to ${m.time} on ${fmt(d)}, same place. Reply CHANGE if that doesn't work.`, n);
+  else toPhone(`Hi ${first(n)}, it's Sherry. We moved your visit to ${m.time} on ${fmt(d)}, same place. Reply CHANGE if that doesn't work.`, n);
+  toast(`${n} moved to ${fmt(d)} ${m.time} and texted`);
+}
+function doLate(day){ const rows=rowsOf(day); rows.forEach(r=>toPhone(`Hi ${first(r.name)}, it's Sherry. The van is running about 30 minutes late on ${fmt(day)}. Your ${r.time} visit moves back 30 minutes. Sorry!`, r.name, true)); feedAdd("out",`📢 Told ${rows.length} patients on ${fmt(day)} the van is 30 minutes late (text, automated call, messenger).`); S.auto+=rows.length; toast(`${rows.length} patients told the van is late`); }
 function drawFeed(){
   $("feed").innerHTML=S.feed.length?S.feed.map(m=>m.kind==="sys"?`<div class="fm sys">${m.html}</div>`:`<div class="fm ${m.kind}">${m.html}${m.ai?`<span class="tagai">🤖 AI read it as: ${esc(m.ai)}</span>`:""}</div>`).join(""):'<div class="fm sys">Incoming texts appear here with what the AI understood. Anything medical or unclear goes to a human.</div>';
   $("feed").scrollTop=$("feed").scrollHeight;
 }
-/* staff actions: run on every device, in the same order */
-function doTask(id,j){ const t=S.tasks.find(x=>x.id===id); if(!t||t.done) return; const a=t.acts[j]; if(!a) return; if(a.phone&&t.who) pushPhone(t.who,{k:"psys",t:a.phone}); done(t,a.doneText); }
-function doArr(n){ const r=findRow(n); if(!r) return; r.status=r.status==="arrived"?"booked":"arrived"; r.flash=true; renderStaff(); if(r.status==="arrived"&&S.phones[r.name]) bubble("✅ Checked in at the van","psys",r.name); }
-function doCxl(n){ const r=findRow(n); if(!r) return; const t=removeRow(r.name);
-  toPhone(`Hi ${first(r.name)}, it's Sherry. We had to cancel your ${t} visit on ${S.date}. Reply CHANGE to pick a new time. Sorry!`, r.name);
-  renderStaff(); fillFromWaitlist(t); }
-function doMove(n,val){
-  const r=findRow(n); if(!r||!val) return; const old=r.time;
-  if(val.startsWith("T:")){
-    const to=val.slice(2); if(S.rows.some(x=>x.time===to)) return;
-    r.time=to; r.flash=true; sortRows();
-    toPhone(`Hi ${first(r.name)}, it's Sherry. Your visit moved from ${old} to ${r.time}, same day and place. Reply CHANGE if that doesn't work.`, r.name);
-    toast(`${r.name} moved to ${r.time} and notified`); renderStaff(); fillFromWaitlist(old); return;
-  }
-  const d=DAYS[+val.slice(2)]; if(!d) return; const where=`${d[0]}, ${d[1]}`;
-  removeRow(r.name); pstate(r.name).away=where; S.moved=S.moved.filter(m=>m.name!==r.name); S.moved.push({name:r.name,where});
-  toPhone(`Hi ${first(r.name)}, it's Sherry. We moved your visit to ${where}. Reply CHANGE if that doesn't work.`, r.name);
-  toast(`${r.name} moved to ${where} and notified`); renderStaff(); fillFromWaitlist(old);
+
+/* ---------- render: phone ---------- */
+function renderPhone(){
+  const m=$("msgs"); const arr=S.phones[L.who]||greetFor(L.who);
+  const html=arr.map(x=>{ const cls=(x.k==="ai"||x.k==="psys")?x.k:"b "+x.k; return `<div class="${cls}">${esc(x.t)}</div>`; }).join("")+L.queue.map(q=>`<div class="b out queued">${esc(q)}</div>`).join("");
+  if(m._last!==html){ m.innerHTML=html; m._last=html; m.scrollTop=m.scrollHeight; }
 }
-function doLate(){ const n=S.rows.length; S.rows.forEach(r=>toPhone(`Hi ${first(r.name)}, it's Sherry. The van is running about 30 minutes late today. Your ${r.time} visit moves back 30 minutes. Sorry!`, r.name, true)); feedAdd("out",`📢 Told all ${n} booked patients the van is 30 minutes late (text, automated call, messenger).`); S.auto+=n; renderStaff(); toast(`${n} patients told the van is late`); }
-function setStopDate(nd,reason){
-  const old=S.date; if(!nd||nd===old) return; S.date=nd; const n=S.rows.length;
-  S.rows.forEach(r=>toPhone(`Hi ${first(r.name)}, it's Sherry. ${reason} the van moved from ${old} to ${nd}, same time (${r.time}) and place. Reply CHANGE if that doesn't work.`, r.name, true));
-  feedAdd("out",`📅 Stop moved ${old} → ${nd}. Texted ${n} booked patients; new postcards for mail-only patients; partners emailed.`); S.auto+=n; renderStaff(); toast(`Whole stop moved to ${nd}; ${n} patients notified`);
+function whoLabels(){
+  [...$("whoSel").options].forEach(o=>{ const b=findBooking(o.value); o.textContent=`${o.value} · ${b?"booked "+fmt(b.iso)+" "+b.row.time:"not booked"}`; });
 }
-function bindStaff(){
-  document.querySelectorAll("#tasks button[data-t]").forEach(b=>b.onclick=()=>dispatch({t:"task",k:+b.dataset.t,j:+b.dataset.j}));
-  document.querySelectorAll("#list button[data-a]").forEach(b=>b.onclick=()=>dispatch({t:b.dataset.a,n:b.dataset.n}));
-  document.querySelectorAll("#list select.moveSel").forEach(sel=>sel.onchange=()=>{ if(sel.value) dispatch({t:"move",n:sel.dataset.n,to:sel.value}); });
-}
+function renderAll(){ drawStaff(); drawFeed(); renderPhone(); whoLabels(); }
 
 /* ---------- staff buttons ---------- */
+function setDayDate(fromIso,toIso,reason){
+  if(!toIso||toIso===fromIso) return; if(toIso<TODAY){ toast("That date has passed"); return; }
+  const src=getDay(fromIso), dst=getDay(toIso); const moved=[];
+  src.rows.slice().forEach(r=>{ let t=r.time; if(dst.rows.find(x=>x.time===t)) t=TIMES.find(x=>!dst.rows.find(y=>y.time===x)); if(!t){ return; }
+    src.rows.splice(src.rows.indexOf(r),1); dst.rows.push({...r,time:t,flash:true}); moved.push([r.name,t]); });
+  dst.rows.sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
+  dst.waitlist.push(...src.waitlist.splice(0));
+  moved.forEach(([n,t])=>toPhone(`Hi ${first(n)}, it's Sherry. ${reason} the van moved from ${fmt(fromIso)} to ${fmt(toIso)}. Your visit is now ${t}, same place. Reply CHANGE if that doesn't work.`, n, true));
+  if(L.view===fromIso) L.view=toIso; S.auto+=moved.length;
+  feedAdd("out",`📅 Whole day moved ${fmt(fromIso)} → ${fmt(toIso)}. Texted ${moved.length} patients; new postcards for mail-only patients; partners emailed.`);
+  toast(`${fmt(fromIso)} moved to ${fmt(toIso)}; ${moved.length} patients texted`);
+}
 function wireStaff(){
+  $("viewDate").min="2026-11-01";
+  $("viewDate").onchange=()=>{ if($("viewDate").value){ L.view=$("viewDate").value; L.editing=null; renderAll(); } };
+  $("moveDayBtn").onclick=()=>{ const to=$("moveDayTo").value; if(!to) return toast("Pick a date to move the day to"); if(to<TODAY) return toast("That date has passed"); dispatch({t:"day",from:L.view,to,why:"Schedule change:"}); };
+  $("snowBtn").onclick=()=>dispatch({t:"day",from:L.view,to:addDays(L.view,7),why:"Because of snow,"});
   $("nextBtn").onclick=()=>{ stopLive(); dispatch({t:"next"}); };
   $("liveBtn").onclick=()=>L.live?stopLive():startLive();
-  $("lateBtn").onclick=()=>dispatch({t:"late"});
-  $("snowBtn").onclick=()=>{ const i=STOP_DATES.indexOf(S.date); dispatch({t:"date",d:STOP_DATES[(i+1)%STOP_DATES.length],why:"Because of snow,"}); };
-  $("stopDateSel").onchange=()=>dispatch({t:"date",d:$("stopDateSel").value,why:"Schedule change:"});
-  $("copyBtn").onclick=()=>{ const txt=`Pomeroy · Dollar General · ${S.date}\n`+S.rows.map(r=>`${r.time}\t${r.name}\t${r.need}\t${r.status}`).join("\n");
+  $("lateBtn").onclick=()=>dispatch({t:"late",day:L.view});
+  $("copyBtn").onclick=()=>{ const txt=`Pomeroy · Dollar General · ${fmt(L.view)}\n`+rowsOf(L.view).map(r=>`${r.time}\t${r.name}\t${r.need}\t${r.status}`).join("\n");
     try{ navigator.clipboard.writeText(txt).then(()=>toast("Daily list copied. Paste it into Athena."),()=>toast("Copy blocked here: in the real system this exports a file.")); }catch(e){ toast("Copy blocked here: in the real system this exports a file."); } };
 }
 
 /* ---------- phone wiring ---------- */
-const TRIES=["1","refill my blood pressure pills","can i come a different day","truck broke down, cant get there","WHERE","what should i bring","CALL ME","my sugar has been high","my chest hurts","2","HELP"];
+const TRIES=["1","refill my blood pressure pills","can i come jan 15th instead","CHANGE","truck broke down, cant get there","WHERE","what should i bring","CALL ME","my sugar has been high","my chest hurts","2","HELP"];
 function setWho(n){
   L.who=n; $("whoSel").value=n;
   $("youAre").textContent=`You are ${first(n)}, a patient`; const bl=$("bothLbl"); if(bl) bl.textContent=`Patient's phone (${first(n)})`;
+  const b=findBooking(n); if(b) L.view=b.iso;
   renderAll();
 }
 function wirePhone(){
-  $("whoSel").innerHTML=PATIENTS.map(([n,d])=>`<option value="${n}">${n} · ${d}</option>`).join("");
+  $("whoSel").innerHTML=PATIENTS.map(n=>`<option value="${n}">${n}</option>`).join("");
   $("whoSel").onchange=()=>setWho($("whoSel").value);
   $("form").onsubmit=e=>{ e.preventDefault(); const v=$("inp").value; $("inp").value=""; sendFromPhone(v); };
   $("tries").innerHTML=""; TRIES.forEach(x=>{ const b=document.createElement("button"); b.textContent=x; b.onclick=()=>sendFromPhone(x); $("tries").appendChild(b); });
@@ -562,30 +624,24 @@ function wirePhone(){
     L.signal=!L.signal; $("sig").style.display=L.signal?"none":"block";
     $("bars").textContent=L.signal?"●●●○ Verizon · no data plan":"○○○○ No service";
     $("sigBtn").textContent=L.signal?"📶 Lose signal":"📶 Signal is back"; $("sigBtn").classList.toggle("on",!L.signal);
-    if(L.signal&&L.queue.length){ const q=L.queue; L.queue=[]; toast("Signal back: sending waiting texts"); const who=L.who; q.forEach((t,i)=>setTimeout(()=>dispatch({t:"text",v:t,who}),i*1600)); }
+    if(L.signal&&L.queue.length){ const q=L.queue; L.queue=[]; const who=L.who; toast("Signal back: sending waiting texts"); q.forEach((t,i)=>setTimeout(()=>dispatch({t:"text",v:t,who}),i*1600)); renderPhone(); }
   };
   $("aiBtn").onclick=()=>{ L.showAI=!L.showAI; document.body.classList.toggle("hideai",!L.showAI); $("aiBtn").textContent=L.showAI?"🤖 Hide what the AI understood":"🤖 Show what the AI understood"; };
 }
-
-function whoLabels(){
-  const sel=$("whoSel"); [...sel.options].forEach(o=>{ const r=S.rows.find(x=>x.name===o.value); const away=S.pt[o.value]&&S.pt[o.value].away;
-    o.textContent=`${o.value} · ${r?"booked "+r.time:away?"moved to "+away.replace(/, [0-9:]+ [AP]M$/,""):"not booked"}`; });
-}
-function renderAll(){ drawStaff(); drawFeed(); renderPhone(); whoLabels(); }
 
 /* ================= LIVE SYNC ACROSS DEVICES =================
    Every action (a patient text, a staff click) is a small event. Events go to a free public
    relay (ntfy.sh) and every open page in the same room applies them in the same order, so
    every patient phone and staff console match. Tabs in the same browser also sync through
-   BroadcastChannel, so the demo still works if the relay is down.
+   BroadcastChannel, so the demo still works if the relay is down. A device that joins late
+   replays everything since the last Reset.
    Demo data only: the relay is public, so never send real patient information. */
 let REPLAY=false;
 function commit(){ if(!REPLAY) renderAll(); }
 function setSync(kind,text){ const p=$("syncPill"); p.className="syncpill "+(kind||""); p.textContent=text; }
-
 const params=new URLSearchParams(location.search);
 const ROOM=((params.get("room")||"main").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,32))||"main";
-const TOPIC="bwc2-hackpalachia26-"+ROOM;
+const TOPIC="bwc3-hackpalachia26-"+ROOM;
 const RELAY="https://ntfy.sh/"+TOPIC;
 let evSeq=0, lastId="";
 const seen=new Set();
@@ -595,20 +651,21 @@ function apply(e){
   if(!e||!e.t||!e.id||seen.has(e.id)) return; seen.add(e.id);
   switch(e.t){
     case "reset": resetAll(); toast("Demo reset for everyone"); break;
-    case "text": if(e.who&&e.v){ bubble(String(e.v),"out",e.who); handleLinda(String(e.v),e.who); } break;
+    case "text": if(e.who&&e.v){ bubble(String(e.v),"out",e.who); handlePatient(String(e.v),e.who); } break;
     case "next": nextScripted(); break;
-    case "late": doLate(); break;
-    case "date": setStopDate(e.d,e.why||"Schedule change:"); break;
+    case "late": doLate(e.day); break;
+    case "day": setDayDate(e.from,e.to,e.why||"Schedule change:"); break;
     case "arr": doArr(e.n); break;
     case "cxl": doCxl(e.n); break;
-    case "move": doMove(e.n,e.to); break;
+    case "move": doMove(e.n,e.d,e.time,e.how); break;
     case "task": doTask(e.k,e.j); break;
   }
+  commit();
 }
 function dispatch(e){
   e.id=ME+"-"+Date.now().toString(36)+"-"+(evSeq++);
-  apply(e);                     // show it here right away
-  try{ bc&&bc.postMessage(e); }catch(_){}   // other tabs in this browser
+  apply(e);                                   // show it here right away
+  try{ bc&&bc.postMessage(e); }catch(_){}     // other tabs in this browser
   fetch(RELAY,{method:"POST",body:JSON.stringify(e)})   // other devices
     .then(r=>{ if(!r.ok) throw r.status; })
     .catch(st=>setSync("warn", st===429?"Sync limit hit · this browser only":"Sync offline · this browser only"));
@@ -617,8 +674,8 @@ if(bc) bc.onmessage=m=>apply(m.data);
 const parseEvt=m=>{ try{ return JSON.parse(m.message); }catch(_){ return null; } };
 
 function resetAll(){
-  stopLive(); L.queue=[]; L.typing=0; L.signal=true; L.showAI=true;
-  S=fresh(); document.body.classList.remove("hideai");
+  stopLive(); L.queue=[]; L.signal=true; L.showAI=true; L.view=MAIN; L.editing=null;
+  S=fresh(); getDay(MAIN); document.body.classList.remove("hideai");
   $("sig").style.display="none"; $("bars").textContent="●●●○ Verizon · no data plan"; $("sigBtn").textContent="📶 Lose signal"; $("sigBtn").classList.remove("on"); $("aiBtn").textContent="🤖 Hide what the AI understood";
   commit();
 }
@@ -626,7 +683,6 @@ $("resetAll").onclick=()=>dispatch({t:"reset"});
 
 async function startSync(){
   setSync("","Connecting…");
-  // 1) Catch up: replay everything since the last reset, so a late-joining device matches.
   try{
     const r=await fetch(RELAY+"/json?poll=1&since=12h");
     if(r.ok){
@@ -637,17 +693,16 @@ async function startSync(){
       REPLAY=true;
       try{ msgs.slice(start).forEach(m=>apply(parseEvt(m))); } finally { REPLAY=false; }
       if(msgs.length) lastId=msgs[msgs.length-1].id;
+      const b=findBooking(L.who); if(b) L.view=b.iso;
       renderAll();
     }
   }catch(_){ REPLAY=false; }
-  // 2) Listen for new events from every other device.
   const es=new EventSource(RELAY+"/sse"+(lastId?"?since="+encodeURIComponent(lastId):""));
   es.onopen=()=>setSync("ok","● Live sync · room "+ROOM);
   es.onmessage=ev=>{ try{ const m=JSON.parse(ev.data); if(m.event!=="message") return; lastId=m.id; apply(parseEvt(m)); }catch(_){} };
   es.onerror=()=>setSync("warn","Reconnecting… (this browser still works)");
 }
 
-/* links for two devices + private rooms */
 function roomUrl(view,room){ const u=new URL(location.href); u.search=room==="main"?"":"?room="+room; u.hash=view; return u.toString(); }
 $("linkPatient").textContent=roomUrl("patient",ROOM); $("linkStaff").textContent=roomUrl("staff",ROOM);
 document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
@@ -657,9 +712,9 @@ document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
 $("newRoom").onclick=()=>{ location.href=roomUrl("home",Math.random().toString(36).slice(2,8)); };
 
 wirePhone(); wireStaff();
-S=fresh(); renderAll();
-go((location.hash||"#home").slice(1));
+S=fresh(); getDay(MAIN); renderAll();
 startSync();
+go((location.hash||"#home").slice(1));
 </script>
 </body>
 </html>
