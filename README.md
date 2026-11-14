@@ -10,7 +10,7 @@ A free mobile health van in rural Southeast Ohio (Meigs County). Patients book, 
 
 | Link | Who it's for |
 |---|---|
-| `#patient` | The patient's phone (Linda). Works on a real phone. |
+| `#patient` | A patient's phone. Use **texting as** to switch between Linda, Ray, Carol, Donna, Rita and Mae. Works on a real phone. |
 | `#staff` | The clinic staff console: daily list, "needs a human" queue, live message feed |
 | `#both` | Phone and console side by side on one screen |
 
