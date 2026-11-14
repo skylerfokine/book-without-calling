@@ -419,6 +419,8 @@ function handleCore(raw){
 
   const dIso=parseDate(t);
 
+  // a date or a change request right after booking means "move it", not the visit reason
+  if(P.stage==="need" && (dIso || /change|reschedul|cancel|different (day|time|date)|another (day|time|date)|instead|move it/.test(l))) P.stage=null;
   if(P.stage==="need"){
     P.stage=null;
     if(/^3$/.test(l)){ P.stage="problem"; tag("NEW PROBLEM"); toPhone("Sorry to hear that. What's going on? A few words is fine."); return; }
