@@ -102,7 +102,7 @@ The biggest risk to patients is the AI getting something wrong, or someone getti
 
 ## Slide 8 · Pilot and ask (40 seconds)
 
-The smallest pilot that would prove this: three months on an Athens-based free mobile clinic route, with one stop in rural Athens County and one in Pomeroy in Meigs County, our hardest case. If it works there, it works anywhere in the region. It's run by the van's own nurse or scheduler on one screen, plus one part-time health messenger. They need a texting number, postcards, and an hour of training.
+The smallest pilot that would prove this: three months on an Athens-based free mobile clinic route, at two rural Athens County stops, Coolville and Glouster. Then Meigs County, our hardest case, is next. It's run by the van's own nurse or scheduler on one screen, plus one part-time health messenger. They need a texting number, postcards, and an hour of training.
 
 We'd measure follow-up completion against the three months before. We keep going if no-shows drop by a third and booking calls drop by half. That's realistic: rural clinics adding text reminders alone have cut no-shows from 11 to 7 percent, and from 15 to 9.
 
