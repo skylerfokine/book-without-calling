@@ -638,6 +638,14 @@ function wirePhone(){
    BroadcastChannel, so the demo still works if the relay is down. A device that joins late
    replays everything since the last Reset.
    Demo data only: the relay is public, so never send real patient information. */
+/* Make sure every device runs the same version: phones often hold an old cached copy,
+   and an old copy can't sync with a new one. If a newer version is published, reload. */
+const BUILD="2026-11-14-c";
+(async()=>{ try{
+  const html=await fetch(location.pathname+"?build="+Date.now(),{cache:"no-store"}).then(r=>r.text());
+  const m=html.match(/const BUILD="([^"]+)"/);
+  if(m && m[1]!==BUILD){ const u=new URL(location.href); u.searchParams.set("b",m[1]); location.replace(u.toString()); }
+}catch(_){} })();
 let REPLAY=false;
 function commit(){ if(!REPLAY) renderAll(); }
 function setSync(kind,text){ const p=$("syncPill"); p.className="syncpill "+(kind||""); p.textContent=text; }
